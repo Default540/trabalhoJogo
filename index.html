@@ -527,10 +527,10 @@ documento.querySelector("#mortes").innerHTML = "Mortes: 0"
 
                 if (element.id.substring(0, 7) != "inimigo") continue;
 
-                let elementW = parseInt(getComputedStyle(document.querySelector("#" + element.id)).width)
-                let elementH = parseInt(getComputedStyle(document.querySelector("#" + element.id)).height)
-                let elementL = parseInt(getComputedStyle(document.querySelector("#" + element.id)).left)
-                let elementT = parseInt(getComputedStyle(document.querySelector("#" + element.id)).top)
+                let elementW = parseInt(getComputedStyle(element.div()).width)
+                let elementH = parseInt(getComputedStyle(element.div()).height)
+                let elementL = parseInt(getComputedStyle(element.div()).left)
+                let elementT = parseInt(getComputedStyle(element.div()).top)
 
                 let playerW = parseInt(getComputedStyle(player.div()).width)
                 let playerH = parseInt(getComputedStyle(player.div()).height)
