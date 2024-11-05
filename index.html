@@ -7,7 +7,6 @@
     <title>Document</title>
     <style>
         #fundo {
-            --height: 80%;
             position: absolute;
             background-color: black;
             width: 80vw;
@@ -47,141 +46,222 @@
         .painel {
             position: absolute;
             top: 88vh;
-            left: 47vw;
+            left: 45vw;
             text-align: center;
 
+        }
+
+        #estatisticas {
+            position: absolute;
+            top: 88vh;
+            left: 27vw;
+            text-align: start;
+        }
+
+        #gameOver {
+            visibility: hidden;
+            position: absolute;
+            top: 30vw;
+            width: 80vw;
+            height: 20vh;
+            color: red;
+            font-size: 100px;
+        }
+
+        .tiro {
+            width: 5px;
+            height: 30px;
+            background-color: white;
+            top: calc(100% - 90px);
+            position: absolute;
+            left: 52%;
         }
     </style>
 </head>
 
 <body>
     <div id="fundo">
+        <div id="gameOver">GAME OVER</div>
         <div id="player"></div>
     </div>
-
+    <div id="estatisticas">
+        <p id="bestScore">Melhor Score: 0</p>
+        <p id="score">Score: 0</p>
+        <p id="mortes">Mortes: 0</p>
+    </div>
     <div class="painel">
         <button type="button" id="iniciar">Iniciar</button><br>
         <hr>
-        
-        W: move para cima <br>
-        S: move para baixo <br>
+        <button id="btnEsquerda">Esquerda</button>
+        <button id="btnDireita">Direita</button> <br><br>
         D: move para direita <br>
         A: move para esquerda
     </div>
 
     <script>
 
-        let player = document.querySelector("#player")
+        let player = { div: () => { return document.querySelector("#player") }, colision: null, move: null }
+
+        let estatisticas = { timerScore: null, score: 0, mortes: 0 };
+        localStorage.setItem("bestScore", 0)
+
         let inimigos = new Set();
-        let fundo = document.querySelector("#fundo")
-        let fundoWidth = parseInt(getComputedStyle(fundo).width);
-        let timer;
-        let timerDownMoveEnemies;
-        let timerGereteEnemies;
+
+        let fundo = { div: () => { return document.querySelector("#fundo") }, width: 0 }
+        fundo.width = parseInt(getComputedStyle(fundo.div()).width);
+        fundo.height = parseInt(getComputedStyle(fundo.div()).height);
+
+        let timers = { timerDownMoveEnemies: null, timerGereteEnemies: null }
+
+        let controls = { direitaBtn: () => { return document.querySelector("button#btnDireita") }, esquerdaBtn: () => { return document.querySelector("button#btnEsquerda") } };
 
         let audio = new Audio("./musica.mp3")
-        
-        
-        
         audio.loop = true
-        
-        
-        window.addEventListener("resize", () => {
-            fundoWidth = parseInt(getComputedStyle(fundo).width);
-        })
-        
-        document.querySelector("#iniciar").addEventListener("click", () => {
-            
-            audio.load()
-            audio.play();
 
-            document.querySelector("#player").style.visibility = "visible"
+
+        window.addEventListener("resize", () => {
+            fundo.width = parseInt(getComputedStyle(fundo.div()).width);
+        })
+
+        document.querySelector("#iniciar").addEventListener("click", () => {
 
             document.querySelector("#iniciar").innerHTML = "Reiniciar"
 
-            clearInterval(timerDownMoveEnemies)
-            clearInterval(timerGereteEnemies)
+            audio.load()
+            audio.play();
 
+            clear()
 
-            inimigos.forEach((e, i) => {
-                clearInterval(e.intervalDirection)
-                clearInterval(e.intervalColisionEnemi)
-            });
+            estatisticas.score = 0
+            estatisticas.mortes = 0
+            estatisticas.timerScore = setInterval(
+                () => {
+                    estatisticas.score++
+                    document.querySelector("#score").innerHTML = `Score: ${estatisticas.score}`
+                }, 100)
 
-            inimigos = new Set();
+            document.querySelector("#gameOver").style.visibility = "hidden"
+            player.div().style.visibility = "visible"
 
-            document.querySelector("#player").style.top = parseInt(getComputedStyle(fundo).height) - 60 + "px"
-            document.querySelector("#player").style.left = (parseInt(getComputedStyle(fundo).width) / 2) + "px"
-
-
-            document.querySelectorAll(".inimigo").forEach(e => {
-                fundo.removeChild(e)
-            })
+            localStorage.setItem("playerLeft", fundo.width / 2)
+            player.div().style.left = localStorage.getItem("playerLeft") + "px"
 
             gereteEnemies()
-            timerDownMoveEnemies = setInterval("moveDownEnemies()", 10)
-            timerGereteEnemies = setInterval("gereteEnemies()", 3000)
 
-            document.removeEventListener("keypress", move);
-            document.addEventListener("keypress", move);
+            timers.timerDownMoveEnemies = setInterval("moveDownEnemies()", 10)
+            timers.timerGereteEnemies = setInterval("gereteEnemies()", 3000)
+            timers.timerGerateShot = setInterval("gerateShot()", 1000)
+            timers.timerMoveShot = setInterval("moveShot()", 10)
+            player.colision = setInterval("playerColision()", 5);
 
-            timer = setInterval("playerColision()", 5)
+            controls.direitaBtn().addEventListener("click", direita)
+            controls.esquerdaBtn().addEventListener("click", esquerda)
 
-
+            document.addEventListener("keydown", move);
 
         })
 
-        
+        function moveShot() {
+            let shots = document.querySelectorAll(".tiro");
 
-        function cima(event = () => { }) {
-            event()
-            if (parseInt(document.querySelector("#player").style.top.replace("px", "")) >= 0) {
-                document.querySelector("#player").style.top = parseInt((document.querySelector("#player").style.top).replace("px", "")) - 10 + "px"
-            }
+            shots.forEach(t => {
+
+                t.style.top = (parseInt(getComputedStyle(t).top) - 5) + "px"
+
+                let tTop = parseInt(getComputedStyle(t).top)
+                let tLeft = parseInt(getComputedStyle(t).left)
+                let tHeight = parseInt(getComputedStyle(t).height)
+                let tWidth = parseInt(getComputedStyle(t).width)
+
+                inimigos.forEach(i => {
+
+
+                    let iTop = parseInt(getComputedStyle(i.div()).top)
+                    let iLeft = parseInt(getComputedStyle(i.div()).left)
+                    let iHeight = parseInt(getComputedStyle(i.div()).height)
+                    let iWidth = parseInt(getComputedStyle(i.div()).width)
+
+                    let killDirectionTop = (iTop + iHeight > tTop && tHeight + tTop > iTop)
+                    let killDirectionRight = (tLeft + tHeight > iLeft && tLeft + tWidth < iWidth + iLeft)
+                    let killDirectionLeft = (iLeft + iWidth > tLeft && tLeft + tWidth > tLeft)
+
+                    if (killDirectionTop && killDirectionRight && killDirectionLeft) {
+
+                        i.life--;
+
+                        if (i.life <= 0) {
+                            clearInterval(i.intervalDirection)
+                            clearInterval(i.intervalColisionEnemi)
+                            i.div().remove()
+                            inimigos.delete(i)
+                            estatisticas.mortes++;
+                            document.querySelector("#mortes").innerHTML = "Mortes: " + estatisticas.mortes;
+                        }
+
+                        t.remove()
+                    }
+                })
+            })
         }
-        function baixo() {
-            if (parseInt(document.querySelector("#player").style.top.replace("px", "")) <= parseInt(getComputedStyle(fundo).height) - 60) {
-                document.querySelector("#player").style.top = parseInt((document.querySelector("#player").style.top).replace("px", "")) + 10 + "px"
-            }
+
+        function gerateShot() {
+
+            let plTop = parseInt(getComputedStyle(player.div()).top)
+            let plLeft = parseInt(getComputedStyle(player.div()).left)
+            let plWidth = parseInt(getComputedStyle(player.div()).width)
+            let plHeight = parseInt(getComputedStyle(player.div()).height)
+
+            fundo.div().innerHTML += `<div class="tiro" style="left: ${plLeft + (plWidth / 2)}px; top: ${plTop - plHeight}px;"></div>`
         }
+
         function direita() {
-            if (parseInt(document.querySelector("#player").style.left.replace("px", "")) <= parseInt(getComputedStyle(fundo).width) - 60) {
-                document.querySelector("#player").style.left = parseInt((document.querySelector("#player").style.left).replace("px", "")) + 10 + "px"
+
+            clearInterval(player.move)
+            player.move = setInterval("direita()", 5)
+
+            if (localStorage.getItem("playerLeft") <= fundo.width - 60) {
+                localStorage.setItem("playerLeft", parseInt((player.div().style.left).replace("px", "")) + 2)
+                player.div().style.left = localStorage.getItem("playerLeft") + "px";
             }
         }
+
         function esquerda() {
-            if (parseInt(document.querySelector("#player").style.left.replace("px", "")) >= 0) {
-                document.querySelector("#player").style.left = parseInt((document.querySelector("#player").style.left).replace("px", "")) - 10 + "px"
+
+            clearInterval(player.move)
+            player.move = setInterval("esquerda()", 5)
+
+            if (localStorage.getItem("playerLeft") >= 0) {
+                localStorage.setItem("playerLeft", parseInt((player.div().style.left).replace("px", "")) - 2)
+                player.div().style.left = localStorage.getItem("playerLeft") + "px"
             }
         }
 
         function move(e) {
-
-            document.querySelector("#player").style.top = document.querySelector("#player").style.top
-            if (e.keyCode == '119') {
-                cima()
-            } else if (e.keyCode == '115') {
-                baixo()
-            } else if (e.keyCode == '100') {
+            if (e.key == 'd') {
                 direita()
-            } else if (e.keyCode == '97') {
+            } else if (e.key == 'a') {
                 esquerda()
             }
         }
 
         function gereteEnemies() {
 
-            let iditem = "inimigo0";
+            let iditem = 0;
 
+            inimigos.forEach(i => {
+                if (i.id >= iditem) {
+                    iditem = i.id + 1
+                }
+            })
 
             let enemi;
-            let count = 1;
+            let count = 2;
 
-            if (fundoWidth > 1300) {
+            if (fundo.width > 1300) {
                 count = 7
-            } else if (fundoWidth > 900) {
+            } else if (fundo.width > 900) {
                 count = 5
-            } else if (fundoWidth > 550) {
+            } else if (fundo.width > 550) {
                 count = 3
             } else {
                 count = 2
@@ -189,39 +269,29 @@
 
             for (let index = 0; index < count; index++) {
 
-                if (inimigos.size > 0) {
-                    iditem = "inimigo" + (parseInt(fundo.children[fundo.children.length - 1].getAttribute("id").replace("inimigo", "")) + 1);
-                }
-
                 if (Math.floor(Math.random() * 100) < 70) {
 
-                    enemi = { id: iditem, type: 1 }
+                    enemi = { id: iditem + index, type: 1, life: 1 }
+
                 } else {
-                    enemi = { id: iditem, type: 2 }
+                    enemi = { id: iditem + index, type: 2, life: 2 }
                 }
 
-
-
-                let distance;
-
                 let valid = false
+                let distance
 
                 while (!valid) {
 
-                    distance = Math.floor((Math.random() * (fundoWidth - 90)));
+                    distance = Math.floor((Math.random() * (fundo.width - 90)));
 
                     valid = true;
                     for (let e of inimigos) {
 
-
-                        let divE = document.querySelector("#" + e.id)
                         let iniW = enemi.type == 1 ? 60 : 90;
 
-                        if (!document.querySelector("#" + e.id)) break;
-
-                        let otherEnemiWidth = parseInt(getComputedStyle(document.querySelector("#" + e.id)).width);
-                        let otherEnemiLeft = parseInt(getComputedStyle(document.querySelector("#" + e.id)).left);
-                        let otherEnemiTop = parseInt(getComputedStyle(document.querySelector("#" + e.id)).top);
+                        let otherEnemiWidth = parseInt(getComputedStyle(e.div()).width);
+                        let otherEnemiLeft = parseInt(getComputedStyle(e.div()).left);
+                        let otherEnemiTop = parseInt(getComputedStyle(e.div()).top);
 
                         if ((distance + iniW >= otherEnemiLeft) && (distance <= otherEnemiLeft + otherEnemiWidth) && otherEnemiTop == 0) {
                             valid = false;
@@ -229,9 +299,14 @@
                     }
                 }
 
-                fundo.innerHTML += `<div style="left: ${distance}px;" class="tipoInimigo${enemi.type} inimigo" id="${enemi.id}"></div>`
+                fundo.div().innerHTML += `<div style="left: ${distance}px;" class="tipoInimigo${enemi.type} inimigo" id="inimigo${enemi.id}"></div>`
+
+                enemi.div = function () {
+                    return document.querySelector("#inimigo" + this.id)
+                }
 
                 enemi.direction = Math.floor(Math.random() * 100) > 50 ? "r" : "l";
+
                 if (enemi.direction == "r") {
 
                     enemi.intervalDirection = setInterval(`moveRightEnemie(${enemi.id})`, 30 / enemi.type)
@@ -241,114 +316,74 @@
                     enemi.intervalDirection = setInterval(`moveLeftEnemie(${enemi.id})`, 30 / enemi.type)
                 }
 
-
-
-
                 enemi.intervalColisionEnemi = setInterval(`colisionEnemi(${enemi.id})`, 2)
 
                 inimigos.add(enemi)
-
             }
         }
 
-        function moveLeftEnemie(enemiDiv) {
+        function moveLeftEnemie(enemiId) {
 
-            let enemi;
-
+            let enemi = {};
 
             inimigos.forEach(element => {
-                if (element.id === enemiDiv.getAttribute("id")) {
+                if (element.id === enemiId) {
                     enemi = element
                 }
             });
 
             enemi.direction = "l";
 
-
-            let eLeft = parseInt(getComputedStyle(enemiDiv).left);
-            let eWidth = parseInt(getComputedStyle(enemiDiv).width);
-
-
-
-            enemiDiv.style.left = (eLeft - 2) + "px";
+            let eLeft = parseInt(getComputedStyle(enemi.div()).left);
+            let eWidth = parseInt(getComputedStyle(enemi.div()).width);
+            enemi.div().style.left = (eLeft - 2) + "px";
 
             if (eLeft <= 0) {
-
                 clearInterval(enemi.intervalDirection);
                 enemi.intervalDirection = setInterval(`moveRightEnemie(${enemi.id})`, 30 / enemi.type);
             }
-
-
         }
 
-        function moveRightEnemie(enemiDiv) {
+        function moveRightEnemie(enemiId) {
 
             let enemi;
 
             inimigos.forEach(element => {
-                if (element.id === enemiDiv.getAttribute("id")) {
+                if (element.id === enemiId) {
                     enemi = element
                 }
             });
+
             enemi.direction = "r";
 
+            let eLeft = parseInt(getComputedStyle(enemi.div()).left);
+            let eWidth = parseInt(getComputedStyle(enemi.div()).width);
 
-            let eLeft = parseInt(getComputedStyle(enemiDiv).left);
-            let eWidth = parseInt(getComputedStyle(enemiDiv).width);
+            enemi.div().style.left = (eLeft + 2) + "px";
 
-            enemiDiv.style.left = (eLeft + 2) + "px";
-
-            if (eLeft >= fundoWidth - eWidth) {
-
+            if (eLeft >= fundo.width - eWidth) {
                 clearInterval(enemi.intervalDirection);
                 enemi.intervalDirection = setInterval(`moveLeftEnemie(${enemi.id})`, 30 / enemi.type);
             }
-
-
         }
 
         function moveDownEnemies() {
 
-            for (let index = 0; index < fundo.children.length; index++) {
+            inimigos.forEach(enemi => {
 
+                let altura = parseInt(getComputedStyle(enemi.div()).top)
 
-                let enemi;
+                enemi.div().style.top = altura + 1 + "px"
 
-                inimigos.forEach((element) => {
-                    if (element.id === fundo.children[index].getAttribute("id")) {
-                        enemi = element
-                    }
-                });
+                if (parseInt(getComputedStyle(enemi.div()).top) + parseInt(getComputedStyle(enemi.div()).height) >= fundo.height) {
 
-                let enemiDiv = document.querySelector("#" + fundo.children[index].getAttribute("id"));
+                    clearInterval(enemi.intervalDirection);
+                    clearInterval(enemi.intervalColisionEnemi)
 
-                if (enemi && enemiDiv) {
-
-                    let altura = parseInt(getComputedStyle(enemiDiv).top)
-
-                    enemiDiv.style.top = altura + 1 + "px"
-
-
-                    let heightFundo = parseInt(getComputedStyle(fundo).height);
-
-                    let centena = heightFundo / 100 | 0
-
-                    let dezena = ((heightFundo % 100) / 10 | 0) > 5 ? 5 : 0
-
-
-                    heightFundo = parseInt(centena.toString() + dezena.toString() + "0")
-
-                    if (parseInt(getComputedStyle(enemiDiv).top) >= heightFundo) {
-
-                        clearInterval(enemi.intervalDirection);
-                        clearInterval(enemi.intervalColisionEnemi)
-
-                        inimigos.delete(enemi)
-
-                        document.querySelector("#" + enemi.id).remove()
-                    }
+                    enemi.div().remove()
+                    inimigos.delete(enemi)
                 }
-            }
+            })
         }
 
         function colisionEnemi(enemiId) {
@@ -357,7 +392,7 @@
 
             inimigos.forEach(element => {
 
-                if (element.id === enemiId.getAttribute("id")) {
+                if (element.id === enemiId) {
                     enemi = element
                 }
             });
@@ -368,8 +403,8 @@
 
                     let e1 = null;
                     let e2 = null;
-                    e1 = document.querySelector("#" + enemi.id) || null;
-                    e2 = document.querySelector("#" + e.id) || null
+                    e1 = enemi.div() || null;
+                    e2 = e.div() || null
 
 
                     if (e1 == null || e2 == null) break;
@@ -452,49 +487,69 @@
 
         }
 
+        function clear() {
+
+            clearInterval(timers.timerDownMoveEnemies)
+            clearInterval(timers.timerGereteEnemies)
+            clearInterval(timers.timerGerateShot)
+            clearInterval(timers.timerMoveShot)
+            clearInterval(player.colision)
+            clearInterval(player.move)
+            clearInterval(estatisticas.timerScore)
+
+            inimigos.forEach((e) => {
+                clearInterval(e.intervalDirection)
+                clearInterval(e.intervalColisionEnemi)
+                e.div().remove()
+            });
+
+            inimigos.clear()
+
+            document.querySelectorAll(".tiro").forEach(e => {
+                e.remove()
+            })
+
+            controls.direitaBtn().removeEventListener("click", direita)
+            controls.esquerdaBtn().removeEventListener("click", esquerda)
+            document.removeEventListener("keydown", move);
+
+        }
+
         function playerColision() {
-            for (let index = 0; index < fundo.children.length; index++) {
+            for (let index = 0; index < fundo.div().children.length; index++) {
 
-                let element = fundo.children[index];
+                let element = fundo.div().children[index];
 
-                if (element.id == "player") continue;
+                if (element.id.substring(0, 7) != "inimigo") continue;
 
                 let elementW = parseInt(getComputedStyle(document.querySelector("#" + element.id)).width)
                 let elementH = parseInt(getComputedStyle(document.querySelector("#" + element.id)).height)
                 let elementL = parseInt(getComputedStyle(document.querySelector("#" + element.id)).left)
                 let elementT = parseInt(getComputedStyle(document.querySelector("#" + element.id)).top)
 
-                let playerW = parseInt(getComputedStyle(document.querySelector("#player")).width)
-                let playerH = parseInt(getComputedStyle(document.querySelector("#player")).height)
-                let playerL = parseInt(getComputedStyle(document.querySelector("#player")).left)
-                let playerT = parseInt(getComputedStyle(document.querySelector("#player")).top)
+                let playerW = parseInt(getComputedStyle(player.div()).width)
+                let playerH = parseInt(getComputedStyle(player.div()).height)
+                let playerL = parseInt(getComputedStyle(player.div()).left)
+                let playerT = parseInt(getComputedStyle(player.div()).top)
 
 
                 let killDirectionRight = (playerL + playerW > elementL && playerL + playerW < elementW + elementL)
                 let killDirectionLeft = (elementL + elementW > playerL && playerL + playerW > elementL)
-                let killDirectionDown = (playerT + playerH > elementT && playerT + playerH < elementH + elementT)
                 let killDirectionTop = (elementT + elementH > playerT && playerT + playerH > elementT)
 
+                if ((killDirectionTop && (killDirectionLeft && killDirectionRight)) || ((killDirectionRight || killDirectionLeft) && killDirectionTop)) {
 
-                if (((killDirectionDown || killDirectionTop) && (killDirectionLeft && killDirectionRight)) ||
+                    clear()
 
-                    ((killDirectionRight || killDirectionLeft) && (killDirectionTop && killDirectionDown))) {
+                    if (localStorage.getItem("bestScore") < estatisticas.score) {
+                        localStorage.setItem("bestScore", estatisticas.score)
+                        document.querySelector("#bestScore").innerHTML = `Melhor Score: ${localStorage.getItem("bestScore")}`
+                    }
 
-                    inimigos.forEach((e) => {
-
-                        clearInterval(e.intervalDirection)
-                        clearInterval(e.intervalColisionEnemi)
-                        clearInterval(timerDownMoveEnemies)
-                        clearInterval(timerGereteEnemies)
-
-                        document.querySelector("#" + e.id).remove()
-                        inimigos.delete(e)
-
-
-                    });
+                    document.querySelector("#gameOver").style.visibility = "visible"
 
                     audio.pause();
-                    document.querySelector("#player").style.visibility = "hidden"
+                    player.div().style.visibility = "hidden"
                 }
             }
         }
