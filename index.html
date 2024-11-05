@@ -219,10 +219,12 @@
             clearInterval(player.move)
             player.move = setInterval("direita()", 5)
 
-            if (localStorage.getItem("playerLeft") <= fundo.width - 60) {
+            if (localStorage.getItem("playerLeft") < fundo.width - 60) {
                 localStorage.setItem("playerLeft", parseInt((player.div().style.left).replace("px", "")) + 2)
                 player.div().style.left = localStorage.getItem("playerLeft") + "px";
-            }
+            }else{
+                esquerda()
+            }   
         }
 
         function esquerda() {
@@ -230,9 +232,11 @@
             clearInterval(player.move)
             player.move = setInterval("esquerda()", 5)
 
-            if (localStorage.getItem("playerLeft") >= 0) {
+            if (localStorage.getItem("playerLeft") > 0) {
                 localStorage.setItem("playerLeft", parseInt((player.div().style.left).replace("px", "")) - 2)
                 player.div().style.left = localStorage.getItem("playerLeft") + "px"
+            }else {
+                direita()
             }
         }
 
