@@ -126,6 +126,7 @@
         document.querySelector("#iniciar").addEventListener("click", () => {
 
             document.querySelector("#iniciar").innerHTML = "Reiniciar"
+            document.querySelector("#mortes").innerHTML = "Mortes: 0";
 
             audio.load()
             audio.play();
@@ -222,9 +223,9 @@
             if (localStorage.getItem("playerLeft") < fundo.width - 60) {
                 localStorage.setItem("playerLeft", parseInt((player.div().style.left).replace("px", "")) + 2)
                 player.div().style.left = localStorage.getItem("playerLeft") + "px";
-            }else{
+            } else {
                 esquerda()
-            }   
+            }
         }
 
         function esquerda() {
@@ -235,7 +236,7 @@
             if (localStorage.getItem("playerLeft") > 0) {
                 localStorage.setItem("playerLeft", parseInt((player.div().style.left).replace("px", "")) - 2)
                 player.div().style.left = localStorage.getItem("playerLeft") + "px"
-            }else {
+            } else {
                 direita()
             }
         }
@@ -520,16 +521,15 @@
         }
 
         function playerColision() {
-            for (let index = 0; index < fundo.div().children.length; index++) {
 
-                let element = fundo.div().children[index];
+            inimigos.forEach(i => {
 
-                if (element.id.substring(0, 7) != "inimigo") continue;
+                
 
-                let elementW = parseInt(getComputedStyle(document.querySelector("#" + element.id)).width)
-                let elementH = parseInt(getComputedStyle(document.querySelector("#" + element.id)).height)
-                let elementL = parseInt(getComputedStyle(document.querySelector("#" + element.id)).left)
-                let elementT = parseInt(getComputedStyle(document.querySelector("#" + element.id)).top)
+                let iW = parseInt(getComputedStyle(i.div()).width)
+                let iH = parseInt(getComputedStyle(i.div()).height)
+                let iL = parseInt(getComputedStyle(i.div()).left)
+                let iT = parseInt(getComputedStyle(i.div()).top)
 
                 let playerW = parseInt(getComputedStyle(player.div()).width)
                 let playerH = parseInt(getComputedStyle(player.div()).height)
@@ -537,9 +537,9 @@
                 let playerT = parseInt(getComputedStyle(player.div()).top)
 
 
-                let killDirectionRight = (playerL + playerW > elementL && playerL + playerW < elementW + elementL)
-                let killDirectionLeft = (elementL + elementW > playerL && playerL + playerW > elementL)
-                let killDirectionTop = (elementT + elementH > playerT && playerT + playerH > elementT)
+                let killDirectionRight = (playerL + playerW > iL && playerL + playerW < iW + iL)
+                let killDirectionLeft = (iL + iW > playerL && playerL + playerW > iL)
+                let killDirectionTop = (iT + iH > playerT && playerT + playerH > iT)
 
                 if ((killDirectionTop && (killDirectionLeft && killDirectionRight)) || ((killDirectionRight || killDirectionLeft) && killDirectionTop)) {
 
@@ -555,6 +555,12 @@
                     audio.pause();
                     player.div().style.visibility = "hidden"
                 }
+            })
+
+
+            for (let index = 0; index < fundo.div().children.length; index++) {
+
+
             }
         }
     </script>
